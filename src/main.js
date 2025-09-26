@@ -83,7 +83,11 @@ class LocalShareApp {
       webPreferences: {
         nodeIntegration: true,
         contextIsolation: false,
-        enableRemoteModule: true
+        enableRemoteModule: true,
+        // Enable screen capture APIs
+        webSecurity: false,
+        allowRunningInsecureContent: true,
+        experimentalFeatures: true
       },
       icon: path.join(__dirname, 'assets/icon.png'),
       title: 'LocalShare - Screen Sharing'

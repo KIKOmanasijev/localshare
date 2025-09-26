@@ -565,16 +565,37 @@ class LocalShareRenderer {
                 }
             };
 
-            // Use modern getDisplayMedia API instead of deprecated getUserMedia
-            console.log('📺 Requesting screen capture using getDisplayMedia...');
-            this.localStream = await navigator.mediaDevices.getDisplayMedia({
-                video: {
-                    width: { ideal: 1920, max: 1920 },
-                    height: { ideal: 1080, max: 1080 },
-                    frameRate: { ideal: 30, max: 60 }
-                },
-                audio: false // We're only capturing screen, not audio
-            });
+            // Try getDisplayMedia first (modern browsers)
+            console.log('📺 Attempting screen capture using getDisplayMedia...');
+            try {
+                this.localStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: {
+                        width: { ideal: 1920, max: 1920 },
+                        height: { ideal: 1080, max: 1080 },
+                        frameRate: { ideal: 30, max: 60 }
+                    },
+                    audio: false
+                });
+                console.log('✅ Screen capture stream obtained via getDisplayMedia');
+            } catch (displayMediaError) {
+                console.log('⚠️ getDisplayMedia failed, trying getUserMedia with desktop capture...');
+                
+                // Fallback to getUserMedia with desktop capture (Electron-specific)
+                this.localStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        mandatory: {
+                            chromeMediaSource: 'desktop',
+                            chromeMediaSourceId: source.id,
+                            minWidth: 1280,
+                            maxWidth: 1920,
+                            minHeight: 720,
+                            maxHeight: 1080,
+                            maxFrameRate: 30
+                        }
+                    }
+                });
+                console.log('✅ Screen capture stream obtained via getUserMedia');
+            }
 
             console.log('✅ Screen capture stream obtained:', this.localStream);
 
@@ -592,6 +613,7 @@ class LocalShareRenderer {
             console.error('   1. User denied screen capture permission');
             console.error('   2. No screen available to capture');
             console.error('   3. Browser/Electron security restrictions');
+            console.error('   4. Electron needs to be run with --enable-features=WebRTC');
         }
     }
 

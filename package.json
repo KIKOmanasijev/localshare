@@ -4,8 +4,8 @@
   "description": "Local screen sharing app built with Electron",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron .",
-    "dev": "electron . --dev",
+    "start": "electron . --enable-features=WebRTC --enable-webrtc",
+    "dev": "electron . --dev --enable-features=WebRTC --enable-webrtc",
     "build": "electron-builder",
     "dist": "electron-builder --publish=never"
   },
