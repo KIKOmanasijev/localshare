@@ -396,39 +396,45 @@ class LocalShareRenderer {
     displayStreamData(data) {
         console.log('📺 Displaying stream data:', data);
         
-        const remoteScreen = document.getElementById('remoteScreen');
-        const viewerContainer = remoteScreen?.parentElement;
+        const viewerContainer = document.querySelector('.viewer-container');
+        if (!viewerContainer) return;
         
-        if (viewerContainer) {
-            // Check if we have a video stream
-            if (this.remoteStream && this.remoteStream.getVideoTracks().length > 0) {
-                // Show the actual video stream
-                remoteScreen.srcObject = this.remoteStream;
-                remoteScreen.style.display = 'block';
-                viewerContainer.innerHTML = `
-                    <video id="remoteScreen" autoplay muted style="width:100%;height:auto;border-radius:8px;"></video>
-                `;
-                // Re-assign the stream to the new video element
-                document.getElementById('remoteScreen').srcObject = this.remoteStream;
-                console.log('✅ Video stream displayed');
-            } else {
-                // Show connection status
-                viewerContainer.innerHTML = `
-                    <div class="stream-placeholder">
-                        <h3>🖥️ Screen Stream Connected</h3>
-                        <div class="stream-info">
-                            <p><strong>Status:</strong> ✅ Connected to remote device</p>
-                            <p><strong>Stream Data:</strong> ${typeof data === 'string' ? data : JSON.stringify(data)}</p>
-                            <p><strong>Note:</strong> WebRTC video streaming is being established...</p>
-                        </div>
+        // Check if we have a video stream
+        if (this.remoteStream && this.remoteStream.getVideoTracks().length > 0) {
+            console.log('✅ Displaying video stream');
+            // Show the actual video stream
+            viewerContainer.innerHTML = `
+                <video id="remoteScreen" autoplay muted style="width:100%;height:auto;border-radius:8px;max-height:600px;"></video>
+                <div class="stream-info" style="margin-top:10px;padding:10px;background:#f8f9fa;border-radius:6px;">
+                    <p><strong>📺 Live Stream Active</strong></p>
+                    <p>Receiving video from remote device</p>
+                </div>
+            `;
+            
+            // Assign the stream to the video element
+            const videoElement = document.getElementById('remoteScreen');
+            if (videoElement) {
+                videoElement.srcObject = this.remoteStream;
+                console.log('✅ Video stream assigned to video element');
+            }
+        } else {
+            // Show connection status
+            viewerContainer.innerHTML = `
+                <div class="stream-placeholder">
+                    <h3>🖥️ Screen Stream Connected</h3>
+                    <div class="stream-info">
+                        <p><strong>Status:</strong> ✅ Connected to remote device</p>
+                        <p><strong>Stream Data:</strong> ${typeof data === 'string' ? data : JSON.stringify(data)}</p>
+                        <p><strong>Note:</strong> WebRTC video streaming is being established...</p>
+                    </div>
                         <div class="stream-controls">
                             <button onclick="app.testConnection()" class="btn btn-primary">Test Connection</button>
                             <button onclick="app.requestScreenStream()" class="btn btn-secondary">Request Screen Stream</button>
                             <button onclick="app.startWebRTCConnection()" class="btn btn-primary">Start WebRTC</button>
+                            <button onclick="app.displayVideoStream()" class="btn btn-secondary">Display Video</button>
                         </div>
-                    </div>
-                `;
-            }
+                </div>
+            `;
         }
     }
 
@@ -474,7 +480,20 @@ class LocalShareRenderer {
             this.peerConnection.ontrack = (event) => {
                 console.log('📺 Received remote stream');
                 this.remoteStream = event.streams[0];
+                console.log('✅ Remote stream assigned:', this.remoteStream);
+                console.log('📊 Stream tracks:', this.remoteStream.getTracks().length);
+                console.log('📹 Video tracks:', this.remoteStream.getVideoTracks().length);
+                
+                // Display the video stream
                 this.displayStreamData('Video stream received');
+            };
+
+            // Handle connection state changes
+            this.peerConnection.onconnectionstatechange = () => {
+                console.log('🔗 Connection state:', this.peerConnection.connectionState);
+                if (this.peerConnection.connectionState === 'connected') {
+                    console.log('✅ WebRTC connection established');
+                }
             };
 
             // Handle ICE candidates
@@ -500,6 +519,16 @@ class LocalShareRenderer {
             console.log('✅ WebRTC offer sent');
         } catch (error) {
             console.error('❌ WebRTC connection failed:', error);
+        }
+    }
+
+    // Method to manually display video if stream is available
+    displayVideoStream() {
+        if (this.remoteStream && this.remoteStream.getVideoTracks().length > 0) {
+            console.log('📺 Manually displaying video stream');
+            this.displayStreamData('Video stream active');
+        } else {
+            console.log('⚠️ No video stream available to display');
         }
     }
 
@@ -597,14 +626,17 @@ class LocalShareRenderer {
     }
 
     async handleWebRTCAnswer(data) {
-        console.log('WebRTC answer received:', data);
+        console.log('📡 WebRTC answer received:', data);
         try {
             if (this.peerConnection) {
+                console.log('✅ Setting remote description from answer...');
                 await this.peerConnection.setRemoteDescription(data.answer);
-                console.log('WebRTC connection established');
+                console.log('✅ WebRTC connection established');
+            } else {
+                console.error('❌ No peer connection available for answer');
             }
         } catch (error) {
-            console.error('WebRTC answer handling failed:', error);
+            console.error('❌ WebRTC answer handling failed:', error);
         }
     }
 
@@ -710,26 +742,31 @@ class LocalShareRenderer {
     }
 
     async handleWebRTCOfferForBroadcasting(data) {
-        console.log('WebRTC offer received for broadcasting:', data);
+        console.log('📡 WebRTC offer received for broadcasting:', data);
         try {
             if (this.broadcastPeerConnection) {
+                console.log('✅ Setting remote description...');
                 // Set remote description
                 await this.broadcastPeerConnection.setRemoteDescription(data.offer);
 
+                console.log('✅ Creating WebRTC answer...');
                 // Create answer
                 const answer = await this.broadcastPeerConnection.createAnswer();
                 await this.broadcastPeerConnection.setLocalDescription(answer);
 
+                console.log('📤 Sending WebRTC answer...');
                 // Send answer
                 this.sendWebSocketMessage({
                     type: 'webrtc-answer',
                     answer: answer
                 });
 
-                console.log('WebRTC answer sent from broadcasting side');
+                console.log('✅ WebRTC answer sent from broadcasting side');
+            } else {
+                console.error('❌ No broadcast peer connection available');
             }
         } catch (error) {
-            console.error('WebRTC offer handling failed for broadcasting:', error);
+            console.error('❌ WebRTC offer handling failed for broadcasting:', error);
         }
     }
 

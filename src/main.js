@@ -668,6 +668,7 @@ class LocalShareApp {
   }
 
   handleWebRTCAnswer(data, ws) {
+    console.log('📡 Handling WebRTC answer from client');
     // Forward WebRTC answer to renderer (broadcasting side)
     if (this.mainWindow) {
       this.mainWindow.webContents.send('webrtc-answer-broadcast', data);
@@ -675,6 +676,7 @@ class LocalShareApp {
   }
 
   handleICECandidate(data, ws) {
+    console.log('📡 Handling ICE candidate from client');
     // Forward ICE candidate to renderer (broadcasting side)
     if (this.mainWindow) {
       this.mainWindow.webContents.send('ice-candidate-broadcast', data);
