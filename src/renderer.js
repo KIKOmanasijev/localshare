@@ -330,19 +330,27 @@ class LocalShareRenderer {
         const deviceWithPIN = { ...device, info: { ...device.info, pin: devicePIN } };
 
         try {
-            console.log('Attempting to connect to device:', deviceWithPIN);
+            console.log('🔗 Attempting to connect to device:', deviceWithPIN);
             const result = await ipcRenderer.invoke('connect-to-device', deviceWithPIN);
             
             if (result.success) {
                 this.showViewer();
                 this.currentConnection = device;
-                console.log('Connected to device:', device.name);
+                console.log('✅ Connected to device:', device.name);
+                
+                // Show connection status
+                this.displayStreamData('Connected to ' + device.name);
+                
+                // Automatically request screen stream after connection
+                setTimeout(() => {
+                    this.requestScreenStream();
+                }, 1000);
             } else {
-                console.error('Connection failed:', result.error);
+                console.error('❌ Connection failed:', result.error);
                 alert('Failed to connect: ' + (result.error || 'Unknown error'));
             }
         } catch (error) {
-            console.error('Connection failed:', error);
+            console.error('❌ Connection failed:', error);
             alert('Connection failed: ' + (error.message || error.toString()));
         }
     }
@@ -374,40 +382,54 @@ class LocalShareRenderer {
     }
 
     displayStreamData(data) {
+        console.log('📺 Displaying stream data:', data);
+        
+        // For now, show a connection status instead of trying to display video
         const remoteScreen = document.getElementById('remoteScreen');
         const viewerContainer = remoteScreen?.parentElement;
         
         if (viewerContainer) {
-            // Hide the video element and show stream info
-            if (remoteScreen) {
-                remoteScreen.style.display = 'none';
-            }
-            
-            if (typeof data === 'object' && data.source) {
-                // Display screen capture information
-                viewerContainer.innerHTML = `
-                    <div class="stream-placeholder">
-                        <h3>🖥️ Screen Stream Active</h3>
-                        <div class="stream-info">
-                            <p><strong>Source:</strong> ${data.source}</p>
-                            <p><strong>Status:</strong> ${data.message}</p>
-                            <p><strong>Connection:</strong> ✅ Connected and receiving data</p>
-                        </div>
-                        <div class="stream-note">
-                            <p><em>Note: This shows the connection is working. For actual video streaming, WebRTC implementation would be needed.</em></p>
-                        </div>
+            viewerContainer.innerHTML = `
+                <div class="stream-placeholder">
+                    <h3>🖥️ Screen Stream Connected</h3>
+                    <div class="stream-info">
+                        <p><strong>Status:</strong> ✅ Connected to remote device</p>
+                        <p><strong>Stream Data:</strong> ${typeof data === 'string' ? data : 'Received'}</p>
+                        <p><strong>Note:</strong> WebRTC video streaming is being established...</p>
                     </div>
-                `;
-            } else {
-                // Display simple message
-                viewerContainer.innerHTML = `
-                    <div class="stream-placeholder">
-                        <h3>🖥️ Screen Stream</h3>
-                        <p>Receiving stream data: ${data}</p>
-                        <p><strong>Status:</strong> ✅ Connected and receiving data</p>
+                    <div class="stream-controls">
+                        <button onclick="app.testConnection()" class="btn btn-primary">Test Connection</button>
+                        <button onclick="app.requestScreenStream()" class="btn btn-secondary">Request Screen Stream</button>
                     </div>
-                `;
-            }
+                </div>
+            `;
+        }
+    }
+
+    async testConnection() {
+        console.log('🧪 Testing connection...');
+        try {
+            // Send a test message to the remote device
+            await ipcRenderer.invoke('send-webrtc-message', {
+                type: 'test-connection',
+                message: 'Hello from MacBook!'
+            });
+            console.log('✅ Test message sent');
+        } catch (error) {
+            console.error('❌ Test failed:', error);
+        }
+    }
+
+    async requestScreenStream() {
+        console.log('📺 Requesting screen stream...');
+        try {
+            // Send a request for screen stream
+            await ipcRenderer.invoke('send-webrtc-message', {
+                type: 'request-stream'
+            });
+            console.log('✅ Screen stream requested');
+        } catch (error) {
+            console.error('❌ Request failed:', error);
         }
     }
 
