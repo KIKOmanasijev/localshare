@@ -629,6 +629,8 @@ class LocalShareApp {
 
   async startWebRTCConnection(ws, source) {
     try {
+      console.log('🔗 Setting up WebRTC connection for:', source.name);
+      
       // Create a unique connection ID
       const connectionId = Date.now().toString();
       
@@ -644,9 +646,9 @@ class LocalShareApp {
         });
       }
       
-      console.log('WebRTC connection setup initiated for:', source.name);
+      console.log('✅ WebRTC connection setup initiated for:', source.name);
     } catch (error) {
-      console.error('Failed to start WebRTC connection:', error);
+      console.error('❌ Failed to start WebRTC connection:', error);
     }
   }
 
@@ -658,6 +660,7 @@ class LocalShareApp {
   }
 
   handleWebRTCOffer(data, ws) {
+    console.log('📡 Handling WebRTC offer from client');
     // Forward WebRTC offer to renderer (broadcasting side)
     if (this.mainWindow) {
       this.mainWindow.webContents.send('webrtc-offer-broadcast', data);

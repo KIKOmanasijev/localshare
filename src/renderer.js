@@ -396,25 +396,39 @@ class LocalShareRenderer {
     displayStreamData(data) {
         console.log('📺 Displaying stream data:', data);
         
-        // For now, show a connection status instead of trying to display video
         const remoteScreen = document.getElementById('remoteScreen');
         const viewerContainer = remoteScreen?.parentElement;
         
         if (viewerContainer) {
-            viewerContainer.innerHTML = `
-                <div class="stream-placeholder">
-                    <h3>🖥️ Screen Stream Connected</h3>
-                    <div class="stream-info">
-                        <p><strong>Status:</strong> ✅ Connected to remote device</p>
-                        <p><strong>Stream Data:</strong> ${typeof data === 'string' ? data : 'Received'}</p>
-                        <p><strong>Note:</strong> WebRTC video streaming is being established...</p>
+            // Check if we have a video stream
+            if (this.remoteStream && this.remoteStream.getVideoTracks().length > 0) {
+                // Show the actual video stream
+                remoteScreen.srcObject = this.remoteStream;
+                remoteScreen.style.display = 'block';
+                viewerContainer.innerHTML = `
+                    <video id="remoteScreen" autoplay muted style="width:100%;height:auto;border-radius:8px;"></video>
+                `;
+                // Re-assign the stream to the new video element
+                document.getElementById('remoteScreen').srcObject = this.remoteStream;
+                console.log('✅ Video stream displayed');
+            } else {
+                // Show connection status
+                viewerContainer.innerHTML = `
+                    <div class="stream-placeholder">
+                        <h3>🖥️ Screen Stream Connected</h3>
+                        <div class="stream-info">
+                            <p><strong>Status:</strong> ✅ Connected to remote device</p>
+                            <p><strong>Stream Data:</strong> ${typeof data === 'string' ? data : JSON.stringify(data)}</p>
+                            <p><strong>Note:</strong> WebRTC video streaming is being established...</p>
+                        </div>
+                        <div class="stream-controls">
+                            <button onclick="app.testConnection()" class="btn btn-primary">Test Connection</button>
+                            <button onclick="app.requestScreenStream()" class="btn btn-secondary">Request Screen Stream</button>
+                            <button onclick="app.startWebRTCConnection()" class="btn btn-primary">Start WebRTC</button>
+                        </div>
                     </div>
-                    <div class="stream-controls">
-                        <button onclick="app.testConnection()" class="btn btn-primary">Test Connection</button>
-                        <button onclick="app.requestScreenStream()" class="btn btn-secondary">Request Screen Stream</button>
-                    </div>
-                </div>
-            `;
+                `;
+            }
         }
     }
 
@@ -442,6 +456,50 @@ class LocalShareRenderer {
             console.log('✅ Screen stream requested');
         } catch (error) {
             console.error('❌ Request failed:', error);
+        }
+    }
+
+    async startWebRTCConnection() {
+        console.log('🔗 Starting WebRTC connection...');
+        try {
+            // Create peer connection
+            this.peerConnection = new RTCPeerConnection({
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ]
+            });
+
+            // Handle incoming stream
+            this.peerConnection.ontrack = (event) => {
+                console.log('📺 Received remote stream');
+                this.remoteStream = event.streams[0];
+                this.displayStreamData('Video stream received');
+            };
+
+            // Handle ICE candidates
+            this.peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    this.sendWebSocketMessage({
+                        type: 'ice-candidate',
+                        candidate: event.candidate
+                    });
+                }
+            };
+
+            // Create offer
+            const offer = await this.peerConnection.createOffer();
+            await this.peerConnection.setLocalDescription(offer);
+
+            // Send offer
+            this.sendWebSocketMessage({
+                type: 'webrtc-offer',
+                offer: offer
+            });
+
+            console.log('✅ WebRTC offer sent');
+        } catch (error) {
+            console.error('❌ WebRTC connection failed:', error);
         }
     }
 
