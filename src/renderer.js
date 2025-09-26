@@ -891,16 +891,24 @@ class LocalShareRenderer {
 
     async handleWebRTCOfferForBroadcasting(data) {
         console.log('📡 WebRTC offer received for broadcasting:', data);
+        console.log('📡 Broadcast peer connection exists:', !!this.broadcastPeerConnection);
+        console.log('📡 Local stream exists:', !!this.localStream);
+        console.log('📡 Local stream tracks:', this.localStream ? this.localStream.getTracks().length : 0);
+        
         try {
             if (this.broadcastPeerConnection) {
                 console.log('✅ Setting remote description...');
                 // Set remote description
                 await this.broadcastPeerConnection.setRemoteDescription(data.offer);
+                console.log('✅ Remote description set successfully');
 
                 console.log('✅ Creating WebRTC answer...');
                 // Create answer
                 const answer = await this.broadcastPeerConnection.createAnswer();
+                console.log('✅ Answer created:', answer.type);
+                
                 await this.broadcastPeerConnection.setLocalDescription(answer);
+                console.log('✅ Local description set');
 
                 console.log('📤 Sending WebRTC answer...');
                 // Send answer
@@ -910,6 +918,10 @@ class LocalShareRenderer {
                 });
 
                 console.log('✅ WebRTC answer sent from broadcasting side');
+                
+                // Check connection state
+                console.log('📊 Connection state after answer:', this.broadcastPeerConnection.connectionState);
+                console.log('📊 ICE connection state after answer:', this.broadcastPeerConnection.iceConnectionState);
             } else {
                 console.error('❌ No broadcast peer connection available');
             }
@@ -931,13 +943,23 @@ class LocalShareRenderer {
     }
 
     async handleICECandidateForBroadcasting(data) {
-        console.log('ICE candidate received for broadcasting:', data);
+        console.log('🧊 ICE candidate received for broadcasting:', data);
+        console.log('🧊 Broadcast peer connection exists:', !!this.broadcastPeerConnection);
+        console.log('🧊 Candidate exists:', !!data.candidate);
+        
         try {
             if (this.broadcastPeerConnection && data.candidate) {
                 await this.broadcastPeerConnection.addIceCandidate(data.candidate);
+                console.log('✅ ICE candidate added successfully');
+                
+                // Check connection state after adding ICE candidate
+                console.log('📊 Connection state after ICE candidate:', this.broadcastPeerConnection.connectionState);
+                console.log('📊 ICE connection state after ICE candidate:', this.broadcastPeerConnection.iceConnectionState);
+            } else {
+                console.log('⚠️ Cannot add ICE candidate - missing peer connection or candidate');
             }
         } catch (error) {
-            console.error('ICE candidate handling failed for broadcasting:', error);
+            console.error('❌ ICE candidate handling failed for broadcasting:', error);
         }
     }
 
