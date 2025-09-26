@@ -545,7 +545,7 @@ class LocalShareRenderer {
 
     async startScreenCaptureForBroadcasting(source) {
         try {
-            console.log('Starting screen capture for broadcasting:', source.name);
+            console.log('🎥 Starting screen capture for broadcasting:', source.name);
             
             // Create a peer connection for broadcasting
             this.broadcastPeerConnection = new RTCPeerConnection({
@@ -565,28 +565,33 @@ class LocalShareRenderer {
                 }
             };
 
-            // Get screen capture stream
-            this.localStream = await navigator.mediaDevices.getUserMedia({
+            // Use modern getDisplayMedia API instead of deprecated getUserMedia
+            console.log('📺 Requesting screen capture using getDisplayMedia...');
+            this.localStream = await navigator.mediaDevices.getDisplayMedia({
                 video: {
-                    mandatory: {
-                        chromeMediaSource: 'desktop',
-                        chromeMediaSourceId: source.id,
-                        minWidth: 1280,
-                        maxWidth: 1920,
-                        minHeight: 720,
-                        maxHeight: 1080
-                    }
-                }
+                    width: { ideal: 1920, max: 1920 },
+                    height: { ideal: 1080, max: 1080 },
+                    frameRate: { ideal: 30, max: 60 }
+                },
+                audio: false // We're only capturing screen, not audio
             });
+
+            console.log('✅ Screen capture stream obtained:', this.localStream);
 
             // Add stream to peer connection
             this.localStream.getTracks().forEach(track => {
                 this.broadcastPeerConnection.addTrack(track, this.localStream);
+                console.log('📡 Added track to peer connection:', track.kind);
             });
 
-            console.log('Screen capture stream added to peer connection');
+            console.log('✅ Screen capture stream added to peer connection');
         } catch (error) {
-            console.error('Failed to start screen capture for broadcasting:', error);
+            console.error('❌ Failed to start screen capture for broadcasting:', error);
+            console.error('💡 Error details:', error.message);
+            console.error('💡 This might be due to:');
+            console.error('   1. User denied screen capture permission');
+            console.error('   2. No screen available to capture');
+            console.error('   3. Browser/Electron security restrictions');
         }
     }
 
