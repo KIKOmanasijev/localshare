@@ -135,6 +135,17 @@ class LocalShareRenderer {
             console.log('📡 Received ICE candidate from remote device');
             this.handleICECandidate(data);
         });
+
+        // Handle stream status messages
+        ipcRenderer.on('stream-ready', (event, data) => {
+            console.log('📺 Stream ready from remote device:', data);
+            this.displayStreamData('Stream ready: ' + data.message + ' (Tracks: ' + data.tracks + ')');
+        });
+
+        ipcRenderer.on('stream-error', (event, data) => {
+            console.log('❌ Stream error from remote device:', data);
+            this.displayStreamData('Stream error: ' + data.message);
+        });
     }
 
     async loadInitialData() {
@@ -705,6 +716,14 @@ class LocalShareRenderer {
                 }
             };
 
+            // Handle connection state changes
+            this.broadcastPeerConnection.onconnectionstatechange = () => {
+                console.log('🔗 Broadcast connection state:', this.broadcastPeerConnection.connectionState);
+                if (this.broadcastPeerConnection.connectionState === 'connected') {
+                    console.log('✅ Broadcast WebRTC connection established');
+                }
+            };
+
             // Try getDisplayMedia first (modern browsers)
             console.log('📺 Attempting screen capture using getDisplayMedia...');
             try {
@@ -719,6 +738,7 @@ class LocalShareRenderer {
                 console.log('✅ Screen capture stream obtained via getDisplayMedia');
             } catch (displayMediaError) {
                 console.log('⚠️ getDisplayMedia failed, trying getUserMedia with desktop capture...');
+                console.log('Error:', displayMediaError.message);
                 
                 // Fallback to getUserMedia with desktop capture (Electron-specific)
                 this.localStream = await navigator.mediaDevices.getUserMedia({
@@ -738,14 +758,24 @@ class LocalShareRenderer {
             }
 
             console.log('✅ Screen capture stream obtained:', this.localStream);
+            console.log('📊 Stream tracks:', this.localStream.getTracks().length);
+            console.log('📹 Video tracks:', this.localStream.getVideoTracks().length);
 
             // Add stream to peer connection
             this.localStream.getTracks().forEach(track => {
                 this.broadcastPeerConnection.addTrack(track, this.localStream);
-                console.log('📡 Added track to peer connection:', track.kind);
+                console.log('📡 Added track to peer connection:', track.kind, track.label);
             });
 
             console.log('✅ Screen capture stream added to peer connection');
+            
+            // Send a test message to confirm stream is ready
+            this.sendWebSocketMessage({
+                type: 'stream-ready',
+                message: 'Screen capture stream is ready and active',
+                tracks: this.localStream.getTracks().length
+            });
+            
         } catch (error) {
             console.error('❌ Failed to start screen capture for broadcasting:', error);
             console.error('💡 Error details:', error.message);
@@ -754,6 +784,12 @@ class LocalShareRenderer {
             console.error('   2. No screen available to capture');
             console.error('   3. Browser/Electron security restrictions');
             console.error('   4. Electron needs to be run with --enable-features=WebRTC');
+            
+            // Send error message
+            this.sendWebSocketMessage({
+                type: 'stream-error',
+                message: 'Screen capture failed: ' + error.message
+            });
         }
     }
 

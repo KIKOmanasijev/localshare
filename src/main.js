@@ -751,6 +751,18 @@ class LocalShareApp {
           this.mainWindow.webContents.send('auth-required', data);
         }
         break;
+      case 'stream-ready':
+        console.log('Received stream ready from remote device');
+        if (this.mainWindow) {
+          this.mainWindow.webContents.send('stream-ready', data);
+        }
+        break;
+      case 'stream-error':
+        console.log('Received stream error from remote device');
+        if (this.mainWindow) {
+          this.mainWindow.webContents.send('stream-error', data);
+        }
+        break;
       default:
         console.log('Unknown message type from remote device:', data.type);
     }
