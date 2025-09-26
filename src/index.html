@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalShare - Screen Sharing</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🖥️ LocalShare</h1>
+            <p>Share your screen across your local network</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Broadcasting Section -->
+            <section class="broadcast-section">
+                <div class="card">
+                    <h2>📡 Start Broadcasting</h2>
+                    <div class="broadcast-controls">
+                        <button id="startBroadcast" class="btn btn-primary">
+                            Start Broadcasting
+                        </button>
+                        <button id="stopBroadcast" class="btn btn-secondary" disabled>
+                            Stop Broadcasting
+                        </button>
+                    </div>
+                    <div id="broadcastStatus" class="status">
+                        <span class="status-indicator offline"></span>
+                        <span>Not broadcasting</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Device Discovery Section -->
+            <section class="discovery-section">
+                <div class="card">
+                    <h2>🔍 Available Devices</h2>
+                    <div class="device-list" id="deviceList">
+                        <div class="no-devices">
+                            <p>No devices found on the network</p>
+                            <button id="refreshDevices" class="btn btn-outline">
+                                🔄 Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Screen Sources Section -->
+            <section class="sources-section">
+                <div class="card">
+                    <h2>📺 Select Screen Source</h2>
+                    <div class="source-list" id="sourceList">
+                        <p>Click "Start Broadcasting" to see available sources</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Viewer Section -->
+            <section class="viewer-section" id="viewerSection" style="display: none;">
+                <div class="card">
+                    <h2>👀 Screen Viewer</h2>
+                    <div class="viewer-controls">
+                        <button id="disconnectViewer" class="btn btn-secondary">
+                            Disconnect
+                        </button>
+                        <div class="quality-controls">
+                            <label for="qualitySelect">Quality:</label>
+                            <select id="qualitySelect">
+                                <option value="720p">720p</option>
+                                <option value="1080p" selected>1080p</option>
+                                <option value="4k">4K</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="viewer-container">
+                        <video id="remoteScreen" autoplay muted></video>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <footer class="footer">
+            <p>LocalShare v1.0.0 - Built with Electron</p>
+        </footer>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>

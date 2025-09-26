@@ -1,0 +1,53 @@
+{
+  "name": "localshare",
+  "version": "1.0.0",
+  "description": "Local screen sharing app built with Electron",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "dist": "electron-builder --publish=never"
+  },
+  "keywords": [
+    "electron",
+    "screen-sharing",
+    "local-network"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^38.1.2",
+    "electron-builder": "^24.6.4"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "multicast-dns": "^7.2.5",
+    "ws": "^8.14.2"
+  },
+  "build": {
+    "appId": "com.localshare.app",
+    "productName": "LocalShare",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": "dmg"
+    },
+    "win": {
+      "target": "dir",
+      "sign": false,
+      "verifyUpdateCodeSignature": false,
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
