@@ -289,10 +289,9 @@ class LocalShareApp {
 
   async startBroadcasting() {
     try {
-      // Start screen capture first
-      await this.startScreenCapture();
+      console.log('🚀 Starting broadcasting process...');
       
-      // Start HTTP server for discovery
+      // Start HTTP server for discovery first
       const expressApp = express();
       expressApp.use(express.json());
       
@@ -307,14 +306,14 @@ class LocalShareApp {
 
       this.httpServer = expressApp.listen(0, () => {
         this.port = this.httpServer.address().port;
-        console.log(`HTTP server started on port ${this.port}`);
+        console.log(`✅ HTTP server started on port ${this.port}`);
       });
 
       // Start WebSocket server for streaming
       this.wss = new WebSocket.Server({ port: 0 });
       this.wss.on('listening', () => {
         this.wsPort = this.wss.address().port;
-        console.log(`WebSocket server started on port ${this.wsPort}`);
+        console.log(`✅ WebSocket server started on port ${this.wsPort}`);
         
         // Start mDNS advertisement after both servers are ready
         this.startMDNSAdvertisement();
@@ -353,14 +352,23 @@ class LocalShareApp {
         });
       });
 
+      // Try to start screen capture, but don't fail if it doesn't work
+      try {
+        await this.startScreenCapture();
+        console.log('✅ Screen capture started successfully');
+      } catch (screenCaptureError) {
+        console.log('⚠️ Screen capture failed, but broadcasting will continue:', screenCaptureError.message);
+        console.log('💡 The device will be discoverable, but screen sharing may not work until permissions are fixed');
+      }
+
       this.isStreaming = true;
-      console.log('Broadcasting started');
+      console.log('✅ Broadcasting started successfully');
       
       if (this.mainWindow) {
         this.mainWindow.webContents.send('broadcasting-started', { port: this.port });
       }
     } catch (error) {
-      console.error('Failed to start broadcasting:', error);
+      console.error('❌ Failed to start broadcasting:', error);
     }
   }
 
@@ -380,12 +388,8 @@ class LocalShareApp {
       this.selectedSource = sources[0];
       console.log('✅ Screen capture source selected:', this.selectedSource.name);
       
-      // Notify renderer to start screen capture
-      if (this.mainWindow) {
-        this.mainWindow.webContents.send('start-screen-capture', {
-          source: this.selectedSource
-        });
-      }
+      // Start screen capture using Electron's native capabilities
+      await this.startNativeScreenCapture();
       
       console.log('✅ Screen capture process started successfully');
     } catch (error) {
@@ -395,6 +399,67 @@ class LocalShareApp {
       console.error('   2. Run LocalShare as administrator');
       console.error('   3. Check Windows Security settings');
       console.error('   4. Ensure no other apps are blocking screen capture');
+      throw error;
+    }
+  }
+
+  async startNativeScreenCapture() {
+    try {
+      console.log('📺 Starting native screen capture...');
+      
+      // Create a hidden window for screen capture
+      const captureWindow = new BrowserWindow({
+        width: 1920,
+        height: 1080,
+        show: false,
+        webPreferences: {
+          nodeIntegration: true,
+          contextIsolation: false,
+          webSecurity: false
+        }
+      });
+
+      // Load a simple HTML page for screen capture
+      captureWindow.loadURL(`data:text/html,
+        <html>
+          <body>
+            <video id="screenVideo" autoplay muted style="width:100%;height:100%;"></video>
+            <script>
+              const video = document.getElementById('screenVideo');
+              
+              async function startCapture() {
+                try {
+                  const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                      mandatory: {
+                        chromeMediaSource: 'desktop',
+                        chromeMediaSourceId: '${this.selectedSource.id}',
+                        minWidth: 1280,
+                        maxWidth: 1920,
+                        minHeight: 720,
+                        maxHeight: 1080
+                      }
+                    }
+                  });
+                  
+                  video.srcObject = stream;
+                  console.log('Screen capture started successfully');
+                } catch (error) {
+                  console.error('Screen capture failed:', error);
+                }
+              }
+              
+              startCapture();
+            </script>
+          </body>
+        </html>
+      `);
+
+      this.captureWindow = captureWindow;
+      console.log('✅ Native screen capture window created');
+      
+    } catch (error) {
+      console.error('❌ Failed to start native screen capture:', error);
       throw error;
     }
   }
@@ -411,6 +476,10 @@ class LocalShareApp {
     if (this.discoveryInterval) {
       clearInterval(this.discoveryInterval);
       this.discoveryInterval = null;
+    }
+    if (this.captureWindow) {
+      this.captureWindow.close();
+      this.captureWindow = null;
     }
     this.isStreaming = false;
     console.log('Broadcasting stopped');
