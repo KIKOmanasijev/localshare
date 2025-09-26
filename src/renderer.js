@@ -422,6 +422,8 @@ class LocalShareRenderer {
 
     displayStreamData(data) {
         console.log('📺 Displaying stream data:', data);
+        console.log('🔍 Current remote stream:', this.remoteStream);
+        console.log('🔍 Video tracks available:', this.remoteStream ? this.remoteStream.getVideoTracks().length : 0);
         
         const viewerContainer = document.querySelector('.viewer-container');
         if (!viewerContainer) return;
@@ -445,21 +447,27 @@ class LocalShareRenderer {
                 console.log('✅ Video stream assigned to video element');
             }
         } else {
-            // Show connection status
+            // Show connection status with more debugging info
+            const streamStatus = this.remoteStream ? 
+                `Remote stream exists but has ${this.remoteStream.getVideoTracks().length} video tracks` : 
+                'No remote stream available';
+                
             viewerContainer.innerHTML = `
                 <div class="stream-placeholder">
                     <h3>🖥️ Screen Stream Connected</h3>
                     <div class="stream-info">
                         <p><strong>Status:</strong> ✅ Connected to remote device</p>
                         <p><strong>Stream Data:</strong> ${typeof data === 'string' ? data : JSON.stringify(data)}</p>
+                        <p><strong>Stream Status:</strong> ${streamStatus}</p>
                         <p><strong>Note:</strong> WebRTC video streaming is being established...</p>
                     </div>
-                        <div class="stream-controls">
-                            <button onclick="app.testConnection()" class="btn btn-primary">Test Connection</button>
-                            <button onclick="app.requestScreenStream()" class="btn btn-secondary">Request Screen Stream</button>
-                            <button onclick="app.startWebRTCConnection()" class="btn btn-primary">Start WebRTC</button>
-                            <button onclick="app.displayVideoStream()" class="btn btn-secondary">Display Video</button>
-                        </div>
+                    <div class="stream-controls">
+                        <button onclick="app.testConnection()" class="btn btn-primary">Test Connection</button>
+                        <button onclick="app.requestScreenStream()" class="btn btn-secondary">Request Screen Stream</button>
+                        <button onclick="app.startWebRTCConnection()" class="btn btn-primary">Start WebRTC</button>
+                        <button onclick="app.displayVideoStream()" class="btn btn-secondary">Display Video</button>
+                        <button onclick="app.debugStreamStatus()" class="btn btn-outline">Debug Stream</button>
+                    </div>
                 </div>
             `;
         }
@@ -505,14 +513,21 @@ class LocalShareRenderer {
 
             // Handle incoming stream
             this.peerConnection.ontrack = (event) => {
-                console.log('📺 Received remote stream');
-                this.remoteStream = event.streams[0];
-                console.log('✅ Remote stream assigned:', this.remoteStream);
-                console.log('📊 Stream tracks:', this.remoteStream.getTracks().length);
-                console.log('📹 Video tracks:', this.remoteStream.getVideoTracks().length);
+                console.log('📺 Received remote stream event');
+                console.log('📺 Event streams:', event.streams.length);
+                console.log('📺 Event track:', event.track);
                 
-                // Display the video stream
-                this.displayStreamData('Video stream received');
+                if (event.streams && event.streams.length > 0) {
+                    this.remoteStream = event.streams[0];
+                    console.log('✅ Remote stream assigned:', this.remoteStream);
+                    console.log('📊 Stream tracks:', this.remoteStream.getTracks().length);
+                    console.log('📹 Video tracks:', this.remoteStream.getVideoTracks().length);
+                    
+                    // Display the video stream
+                    this.displayStreamData('Video stream received');
+                } else {
+                    console.log('⚠️ No streams in track event');
+                }
             };
 
             // Handle connection state changes
@@ -557,6 +572,25 @@ class LocalShareRenderer {
         } else {
             console.log('⚠️ No video stream available to display');
         }
+    }
+
+    // Debug method to check stream status
+    debugStreamStatus() {
+        console.log('🔍 Debug Stream Status:');
+        console.log('  - Remote stream exists:', !!this.remoteStream);
+        console.log('  - Peer connection exists:', !!this.peerConnection);
+        console.log('  - Peer connection state:', this.peerConnection ? this.peerConnection.connectionState : 'N/A');
+        console.log('  - ICE connection state:', this.peerConnection ? this.peerConnection.iceConnectionState : 'N/A');
+        console.log('  - Video tracks:', this.remoteStream ? this.remoteStream.getVideoTracks().length : 0);
+        console.log('  - All tracks:', this.remoteStream ? this.remoteStream.getTracks().length : 0);
+        
+        if (this.remoteStream) {
+            this.remoteStream.getTracks().forEach((track, index) => {
+                console.log(`  - Track ${index}:`, track.kind, track.label, track.readyState);
+            });
+        }
+        
+        this.displayStreamData('Debug info logged to console');
     }
 
     showConnectionError(error) {
