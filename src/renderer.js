@@ -467,6 +467,7 @@ class LocalShareRenderer {
                         <button onclick="app.startWebRTCConnection()" class="btn btn-primary">Start WebRTC</button>
                         <button onclick="app.displayVideoStream()" class="btn btn-secondary">Display Video</button>
                         <button onclick="app.debugStreamStatus()" class="btn btn-outline">Debug Stream</button>
+                        <button onclick="app.checkForRemoteStreams()" class="btn btn-outline">Check Streams</button>
                     </div>
                 </div>
             `;
@@ -532,19 +533,43 @@ class LocalShareRenderer {
 
             // Handle connection state changes
             this.peerConnection.onconnectionstatechange = () => {
-                console.log('🔗 Connection state:', this.peerConnection.connectionState);
+                console.log('🔗 Connection state changed:', this.peerConnection.connectionState);
                 if (this.peerConnection.connectionState === 'connected') {
                     console.log('✅ WebRTC connection established');
+                } else if (this.peerConnection.connectionState === 'failed') {
+                    console.log('❌ WebRTC connection failed');
+                } else if (this.peerConnection.connectionState === 'disconnected') {
+                    console.log('⚠️ WebRTC connection disconnected');
                 }
+            };
+
+            // Handle ICE connection state changes
+            this.peerConnection.oniceconnectionstatechange = () => {
+                console.log('🧊 ICE connection state changed:', this.peerConnection.iceConnectionState);
+                if (this.peerConnection.iceConnectionState === 'connected') {
+                    console.log('✅ ICE connection established');
+                } else if (this.peerConnection.iceConnectionState === 'failed') {
+                    console.log('❌ ICE connection failed');
+                } else if (this.peerConnection.iceConnectionState === 'disconnected') {
+                    console.log('⚠️ ICE connection disconnected');
+                }
+            };
+
+            // Handle ICE gathering state changes
+            this.peerConnection.onicegatheringstatechange = () => {
+                console.log('🧊 ICE gathering state changed:', this.peerConnection.iceGatheringState);
             };
 
             // Handle ICE candidates
             this.peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
+                    console.log('🧊 ICE candidate generated, sending to remote...');
                     this.sendWebSocketMessage({
                         type: 'ice-candidate',
                         candidate: event.candidate
                     });
+                } else {
+                    console.log('🧊 ICE candidate gathering complete');
                 }
             };
 
@@ -581,6 +606,7 @@ class LocalShareRenderer {
         console.log('  - Peer connection exists:', !!this.peerConnection);
         console.log('  - Peer connection state:', this.peerConnection ? this.peerConnection.connectionState : 'N/A');
         console.log('  - ICE connection state:', this.peerConnection ? this.peerConnection.iceConnectionState : 'N/A');
+        console.log('  - ICE gathering state:', this.peerConnection ? this.peerConnection.iceGatheringState : 'N/A');
         console.log('  - Video tracks:', this.remoteStream ? this.remoteStream.getVideoTracks().length : 0);
         console.log('  - All tracks:', this.remoteStream ? this.remoteStream.getTracks().length : 0);
         
@@ -590,7 +616,35 @@ class LocalShareRenderer {
             });
         }
         
+        // Check if we have any remote streams in the peer connection
+        if (this.peerConnection) {
+            console.log('  - Remote streams in peer connection:', this.peerConnection.getRemoteStreams().length);
+            this.peerConnection.getRemoteStreams().forEach((stream, index) => {
+                console.log(`  - Remote stream ${index}:`, stream.getTracks().length, 'tracks');
+            });
+        }
+        
         this.displayStreamData('Debug info logged to console');
+    }
+
+    // Method to manually check for remote streams in peer connection
+    checkForRemoteStreams() {
+        console.log('🔍 Checking for remote streams in peer connection...');
+        if (this.peerConnection) {
+            const remoteStreams = this.peerConnection.getRemoteStreams();
+            console.log('📊 Remote streams found:', remoteStreams.length);
+            
+            if (remoteStreams.length > 0) {
+                console.log('✅ Found remote streams! Assigning first one...');
+                this.remoteStream = remoteStreams[0];
+                console.log('📹 Video tracks in remote stream:', this.remoteStream.getVideoTracks().length);
+                this.displayStreamData('Remote stream found and assigned');
+            } else {
+                console.log('⚠️ No remote streams found in peer connection');
+            }
+        } else {
+            console.log('❌ No peer connection available');
+        }
     }
 
     showConnectionError(error) {
@@ -692,7 +746,9 @@ class LocalShareRenderer {
             if (this.peerConnection) {
                 console.log('✅ Setting remote description from answer...');
                 await this.peerConnection.setRemoteDescription(data.answer);
-                console.log('✅ WebRTC connection established');
+                console.log('✅ Remote description set, connection should be establishing...');
+                console.log('🔗 Current connection state:', this.peerConnection.connectionState);
+                console.log('🧊 Current ICE state:', this.peerConnection.iceConnectionState);
             } else {
                 console.error('❌ No peer connection available for answer');
             }
@@ -702,13 +758,19 @@ class LocalShareRenderer {
     }
 
     async handleICECandidate(data) {
-        console.log('ICE candidate received:', data);
+        console.log('🧊 ICE candidate received:', data);
         try {
             if (this.peerConnection && data.candidate) {
+                console.log('✅ Adding ICE candidate to peer connection...');
                 await this.peerConnection.addIceCandidate(data.candidate);
+                console.log('✅ ICE candidate added successfully');
+                console.log('🔗 Current connection state:', this.peerConnection.connectionState);
+                console.log('🧊 Current ICE state:', this.peerConnection.iceConnectionState);
+            } else {
+                console.log('⚠️ No peer connection or candidate available');
             }
         } catch (error) {
-            console.error('ICE candidate handling failed:', error);
+            console.error('❌ ICE candidate handling failed:', error);
         }
     }
 
