@@ -1,0 +1,26 @@
+{
+  "appId": "com.localshare.app",
+  "productName": "LocalShare",
+  "directories": {
+    "output": "dist"
+  },
+  "files": [
+    "src/**/*",
+    "node_modules/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": "dir",
+    "sign": false,
+    "verifyUpdateCodeSignature": false,
+    "requestedExecutionLevel": "asInvoker",
+    "compression": "store"
+  },
+  "mac": {
+    "category": "public.app-category.utilities",
+    "target": "dmg"
+  },
+  "linux": {
+    "target": "AppImage"
+  }
+}

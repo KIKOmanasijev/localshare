@@ -238,8 +238,15 @@ class LocalShareRenderer {
 
     async refreshDevices() {
         try {
-            this.devices = await ipcRenderer.invoke('get-devices');
-            this.renderDevices();
+            console.log('🔄 Refreshing device list...');
+            // Trigger manual discovery
+            await ipcRenderer.invoke('trigger-discovery');
+            // Wait a moment for discovery to complete
+            setTimeout(async () => {
+                this.devices = await ipcRenderer.invoke('get-devices');
+                console.log('📱 Found devices:', this.devices);
+                this.renderDevices();
+            }, 2000);
         } catch (error) {
             console.error('Failed to refresh devices:', error);
         }

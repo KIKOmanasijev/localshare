@@ -103,17 +103,20 @@ class LocalShareApp {
 
   startDiscovery() {
     try {
+      console.log('🔍 Starting device discovery...');
+      
       // Listen for mDNS queries
       mdns.on('query', (query) => {
+        console.log('📡 mDNS query received:', JSON.stringify(query, null, 2));
         // Respond to queries for our service
         if (query.questions.some(q => q.name === 'localshare._tcp.local')) {
-          console.log('Received query for localshare service');
+          console.log('✅ Received query for localshare service');
         }
       });
 
       // Listen for responses
       mdns.on('response', (response) => {
-        console.log('mDNS response received:', JSON.stringify(response, null, 2));
+        console.log('📨 mDNS response received:', JSON.stringify(response, null, 2));
         
         response.answers.forEach(answer => {
           if (answer.type === 'PTR' && answer.name === 'localshare._tcp.local') {
@@ -200,9 +203,21 @@ class LocalShareApp {
       });
 
       // Query for services
+      console.log('🔍 Querying for localshare services...');
       mdns.query('localshare._tcp.local', 'PTR');
       
-      console.log('Device discovery started');
+      // Also query for any _tcp services to see what's available
+      console.log('🔍 Querying for all _tcp services...');
+      mdns.query('_tcp.local', 'PTR');
+      
+      console.log('✅ Device discovery started');
+      
+      // Set up periodic discovery refresh
+      this.discoveryInterval = setInterval(() => {
+        console.log('🔄 Periodic discovery refresh...');
+        mdns.query('localshare._tcp.local', 'PTR');
+      }, 10000); // Query every 10 seconds
+      
     } catch (error) {
       console.error('Failed to start discovery:', error);
     }
@@ -214,11 +229,12 @@ class LocalShareApp {
       const serviceName = `${hostname}._localshare._tcp.local`;
       const networkIP = this.getNetworkIP();
       
-      console.log('Hostname:', hostname);
-      console.log('Service name:', serviceName);
-      console.log('Network IP:', networkIP);
-      console.log('HTTP Port:', this.port);
-      console.log('WebSocket Port:', this.wsPort);
+      console.log('📢 Starting mDNS advertisement...');
+      console.log('🖥️ Hostname:', hostname);
+      console.log('🏷️ Service name:', serviceName);
+      console.log('🌐 Network IP:', networkIP);
+      console.log('🔌 HTTP Port:', this.port);
+      console.log('🔌 WebSocket Port:', this.wsPort);
       
       // Use WebSocket port for the service advertisement
       const servicePort = this.wsPort || this.port;
@@ -258,9 +274,10 @@ class LocalShareApp {
         console.log('Added A record with network IP:', networkIP);
       }
       
+      console.log('📋 Advertising records:', JSON.stringify(records, null, 2));
       mdns.respond(records);
       
-      console.log('mDNS advertisement started');
+      console.log('✅ mDNS advertisement started');
     } catch (error) {
       console.error('Failed to start mDNS advertisement:', error);
     }
@@ -345,15 +362,19 @@ class LocalShareApp {
 
   async startScreenCapture() {
     try {
+      console.log('🎥 Starting screen capture process...');
+      
       // Get screen sources
       const sources = await this.getScreenSources();
       if (sources.length === 0) {
-        throw new Error('No screen sources available');
+        const errorMsg = 'No screen sources available. Please check screen recording permissions.';
+        console.error('❌', errorMsg);
+        throw new Error(errorMsg);
       }
 
       // Use the first available screen source
       this.selectedSource = sources[0];
-      console.log('Screen capture source selected:', this.selectedSource.name);
+      console.log('✅ Screen capture source selected:', this.selectedSource.name);
       
       // Notify renderer to start screen capture
       if (this.mainWindow) {
@@ -361,8 +382,15 @@ class LocalShareApp {
           source: this.selectedSource
         });
       }
+      
+      console.log('✅ Screen capture process started successfully');
     } catch (error) {
-      console.error('Failed to start screen capture:', error);
+      console.error('❌ Failed to start screen capture:', error);
+      console.error('💡 Troubleshooting tips:');
+      console.error('   1. Check Windows Privacy & Security → Screen recording');
+      console.error('   2. Run LocalShare as administrator');
+      console.error('   3. Check Windows Security settings');
+      console.error('   4. Ensure no other apps are blocking screen capture');
       throw error;
     }
   }
@@ -375,6 +403,10 @@ class LocalShareApp {
     if (this.httpServer) {
       this.httpServer.close();
       this.httpServer = null;
+    }
+    if (this.discoveryInterval) {
+      clearInterval(this.discoveryInterval);
+      this.discoveryInterval = null;
     }
     this.isStreaming = false;
     console.log('Broadcasting stopped');
@@ -395,10 +427,20 @@ class LocalShareApp {
       sources.forEach((source, index) => {
         console.log(`  ${index + 1}. ${source.name} (${source.id})`);
       });
+      
+      if (sources.length === 0) {
+        console.error('❌ No screen sources available!');
+        console.error('This usually means:');
+        console.error('1. Screen recording permissions are not granted');
+        console.error('2. No screens/windows are available to capture');
+        console.error('3. Windows security settings are blocking access');
+      }
+      
       return sources;
     } catch (error) {
       console.error('Failed to get screen sources:', error);
       console.error('This usually means screen recording permissions are not granted');
+      console.error('Error details:', error.message);
       return [];
     }
   }
@@ -584,6 +626,13 @@ class LocalShareApp {
 
     ipcMain.handle('get-devices', () => {
       return Array.from(this.devices.values());
+    });
+
+    ipcMain.handle('trigger-discovery', () => {
+      console.log('🔍 Manual discovery triggered');
+      mdns.query('localshare._tcp.local', 'PTR');
+      mdns.query('_tcp.local', 'PTR');
+      return { success: true };
     });
 
     ipcMain.handle('connect-to-device', async (event, deviceInfo) => {
