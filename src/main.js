@@ -555,6 +555,7 @@ class LocalShareApp {
         }
         break;
       case 'offer':
+      case 'webrtc-offer':
         // Handle WebRTC offer
         if (ws.authenticated) {
           console.log('📡 Received WebRTC offer');
@@ -562,6 +563,7 @@ class LocalShareApp {
         }
         break;
       case 'answer':
+      case 'webrtc-answer':
         // Handle WebRTC answer
         if (ws.authenticated) {
           console.log('📡 Received WebRTC answer');
