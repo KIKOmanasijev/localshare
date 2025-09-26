@@ -119,6 +119,22 @@ class LocalShareRenderer {
             console.log('🔐 Authentication required');
             this.displayStreamData('Authentication required - please reconnect');
         });
+
+        // Handle WebRTC messages from remote device
+        ipcRenderer.on('webrtc-offer', (event, data) => {
+            console.log('📡 Received WebRTC offer from remote device');
+            this.handleWebRTCOffer(data);
+        });
+
+        ipcRenderer.on('webrtc-answer', (event, data) => {
+            console.log('📡 Received WebRTC answer from remote device');
+            this.handleWebRTCAnswer(data);
+        });
+
+        ipcRenderer.on('ice-candidate', (event, data) => {
+            console.log('📡 Received ICE candidate from remote device');
+            this.handleICECandidate(data);
+        });
     }
 
     async loadInitialData() {

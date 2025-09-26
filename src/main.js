@@ -721,6 +721,24 @@ class LocalShareApp {
         console.log('Received WebRTC setup from remote device');
         this.handleWebRTCSetup(data);
         break;
+      case 'webrtc-offer':
+        console.log('Received WebRTC offer from remote device');
+        if (this.mainWindow) {
+          this.mainWindow.webContents.send('webrtc-offer', data);
+        }
+        break;
+      case 'webrtc-answer':
+        console.log('Received WebRTC answer from remote device');
+        if (this.mainWindow) {
+          this.mainWindow.webContents.send('webrtc-answer', data);
+        }
+        break;
+      case 'ice-candidate':
+        console.log('Received ICE candidate from remote device');
+        if (this.mainWindow) {
+          this.mainWindow.webContents.send('ice-candidate', data);
+        }
+        break;
       case 'test-response':
         console.log('Received test response from remote device');
         if (this.mainWindow) {
