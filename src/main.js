@@ -519,71 +519,110 @@ class LocalShareApp {
   }
 
   handleWebSocketMessage(ws, data) {
+    console.log('📨 Received WebSocket message:', data.type);
+    
     switch (data.type) {
       case 'authenticate':
         // Handle PIN authentication
         if (data.pin === this.pin) {
           ws.authenticated = true;
           ws.send(JSON.stringify({ type: 'auth-success' }));
-          console.log('Client authenticated successfully');
+          console.log('✅ Client authenticated successfully');
         } else {
           ws.send(JSON.stringify({ type: 'auth-failed' }));
-          console.log('Authentication failed for client');
+          console.log('❌ Authentication failed for client');
         }
         break;
-      case 'offer':
-        // Handle WebRTC offer
+      case 'test-connection':
+        // Handle test connection
         if (ws.authenticated) {
-          console.log('Received WebRTC offer');
-        }
-        break;
-      case 'answer':
-        // Handle WebRTC answer
-        if (ws.authenticated) {
-          console.log('Received WebRTC answer');
-        }
-        break;
-      case 'ice-candidate':
-        // Handle ICE candidate
-        if (ws.authenticated) {
-          console.log('Received ICE candidate');
+          console.log('🧪 Test connection received:', data.message);
+          ws.send(JSON.stringify({ 
+            type: 'test-response', 
+            message: 'Hello from Windows PC!',
+            timestamp: Date.now()
+          }));
         }
         break;
       case 'request-stream':
         // Handle stream request
         if (ws.authenticated) {
-          console.log('Stream requested');
+          console.log('📺 Stream requested - sending stream data...');
           this.sendStreamData(ws);
+        } else {
+          console.log('⚠️ Stream request received but client not authenticated');
+          ws.send(JSON.stringify({ type: 'auth-required' }));
+        }
+        break;
+      case 'offer':
+        // Handle WebRTC offer
+        if (ws.authenticated) {
+          console.log('📡 Received WebRTC offer');
+          this.handleWebRTCOffer(data, ws);
+        }
+        break;
+      case 'answer':
+        // Handle WebRTC answer
+        if (ws.authenticated) {
+          console.log('📡 Received WebRTC answer');
+          this.handleWebRTCAnswer(data, ws);
+        }
+        break;
+      case 'ice-candidate':
+        // Handle ICE candidate
+        if (ws.authenticated) {
+          console.log('📡 Received ICE candidate');
+          this.handleICECandidate(data, ws);
         }
         break;
       default:
-        console.log('Unknown WebSocket message type:', data.type);
+        console.log('❓ Unknown WebSocket message type:', data.type);
     }
   }
 
   async sendStreamData(ws) {
     try {
+      console.log('📺 Processing stream request...');
+      
       // Get screen sources
       const sources = await this.getScreenSources();
       if (sources.length === 0) {
+        console.log('❌ No screen sources available');
         ws.send(JSON.stringify({
           type: 'stream-data',
-          data: 'No screen sources available'
+          data: 'No screen sources available - check screen recording permissions'
         }));
         return;
       }
 
       // Use the selected source or first available
       const source = this.selectedSource || sources[0];
-      console.log('Capturing screen from:', source.name);
+      console.log('✅ Using screen source:', source.name);
 
-      // Start WebRTC peer connection
-      await this.startWebRTCConnection(ws, source);
-    } catch (error) {
-      console.error('Failed to capture screen:', error);
+      // Send stream information
       ws.send(JSON.stringify({
         type: 'stream-data',
-        data: 'Screen capture failed: ' + error.message
+        data: {
+          source: source.name,
+          message: 'Screen capture is ready',
+          status: 'connected',
+          timestamp: Date.now()
+        }
+      }));
+
+      // Start WebRTC peer connection
+      console.log('🔗 Starting WebRTC connection...');
+      await this.startWebRTCConnection(ws, source);
+      
+    } catch (error) {
+      console.error('❌ Failed to process stream request:', error);
+      ws.send(JSON.stringify({
+        type: 'stream-data',
+        data: {
+          message: 'Screen capture failed: ' + error.message,
+          status: 'error',
+          timestamp: Date.now()
+        }
       }));
     }
   }
@@ -676,6 +715,18 @@ class LocalShareApp {
       case 'webrtc-setup':
         console.log('Received WebRTC setup from remote device');
         this.handleWebRTCSetup(data);
+        break;
+      case 'test-response':
+        console.log('Received test response from remote device');
+        if (this.mainWindow) {
+          this.mainWindow.webContents.send('test-response', data);
+        }
+        break;
+      case 'auth-required':
+        console.log('Received auth required from remote device');
+        if (this.mainWindow) {
+          this.mainWindow.webContents.send('auth-required', data);
+        }
         break;
       default:
         console.log('Unknown message type from remote device:', data.type);

@@ -107,6 +107,18 @@ class LocalShareRenderer {
         ipcRenderer.on('ice-candidate-broadcast', (event, data) => {
             this.handleICECandidateForBroadcasting(data);
         });
+
+        // Handle test connection responses
+        ipcRenderer.on('test-response', (event, data) => {
+            console.log('🧪 Test response received:', data);
+            this.displayStreamData('Test successful: ' + data.message);
+        });
+
+        // Handle auth required messages
+        ipcRenderer.on('auth-required', (event, data) => {
+            console.log('🔐 Authentication required');
+            this.displayStreamData('Authentication required - please reconnect');
+        });
     }
 
     async loadInitialData() {
